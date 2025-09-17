@@ -8,6 +8,9 @@ from pathlib import Path
 from typing import List, Tuple, Optional
 
 from faster_whisper import WhisperModel
+import logging
+
+logger = logging.getLogger(__name__)
 
 # ===== モデルのシングルトン読み込み =====
 _MODEL: Optional[WhisperModel] = None
@@ -32,6 +35,12 @@ def _get_model() -> WhisperModel:
             model_size_or_path=model_name,
             device=device,
             **kwargs,
+        )
+        logger.info(
+            "WhisperModel initialized: model=%s device=%s compute_type=%s",
+            model_name,
+            device,
+            kwargs.get("compute_type", "auto"),
         )
     return _MODEL
 
@@ -104,9 +113,13 @@ def _burn_srt_with_ffmpeg(video_path: Path, srt_path: Path, out_path: Path) -> N
         "-shortest",
         str(out_path),
     ]
+    logger.info("Running ffmpeg: %s", " ".join(cmd))
     proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if proc.returncode != 0:
-        raise RuntimeError(f"ffmpeg failed ({proc.returncode}): {proc.stderr.decode(errors='ignore')}")
+        stderr = proc.stderr.decode(errors='ignore')
+        logger.error("ffmpeg failed (code=%s): %s", proc.returncode, stderr)
+        raise RuntimeError(f"ffmpeg failed ({proc.returncode}): {stderr}")
+    logger.info("ffmpeg succeeded: output=%s", out_path)
 
 # ===== 文字起こし → [(start, end, text), ...] =====
 def _transcribe_segments(input_media: Path) -> List[Tuple[float, float, str]]:
