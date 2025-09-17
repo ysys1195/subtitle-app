@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, UploadFile, File, Response, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 from pathlib import Path
 import tempfile
 import logging
@@ -31,18 +33,27 @@ async def subtitles_en(file: UploadFile = File(...)):
         filename = file.filename or "(no-name)"
         logger.info("/subtitles/en received: filename=%s size=?", filename)
         in_path, td = _save_upload_to_temp(file)
-        out_path = in_path.parent / "output_with_subs.mp4"
+        out_name = f"{Path(filename).stem}_subs.mp4"
+        out_path = in_path.parent / out_name
         generate_en_subtitled_video(in_path, out_path)
 
-        data = out_path.read_bytes()
-        td.cleanup()
+        size_bytes = out_path.stat().st_size
         elapsed = (time.perf_counter() - start) * 1000
-        logger.info("/subtitles/en success: filename=%s elapsed_ms=%.1f size_bytes=%d", filename, elapsed, len(data))
-        return Response(
-            content=data,
+        logger.info(
+            "/subtitles/en success: filename=%s elapsed_ms=%.1f size_bytes=%d",
+            filename, elapsed, size_bytes,
+        )
+        return FileResponse(
+            path=out_path,
             media_type="video/mp4",
-            headers={"Content-Disposition": 'attachment; filename="output_with_subs.mp4"'}
+            filename=out_name,
+            background=BackgroundTask(td.cleanup),
         )
     except Exception as e:
         logger.exception("/subtitles/en failed: %s", e)
+        try:
+            # 失敗時は明示的に一時ディレクトリをクリーンアップ
+            td.cleanup()  # type: ignore[name-defined]
+        except Exception:
+            pass
         raise HTTPException(status_code=422, detail=str(e))
