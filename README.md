@@ -35,6 +35,7 @@ pip freeze --exclude-editable > requirements-lock.txt
 - `COMPUTE_TYPE`: 自動判定（未指定のため）
 - `FFMPEG_CRF`: 23（H.264 の画質指標。0-51、低いほど高画質/大きい）
 - `FFMPEG_PRESET`: medium（エンコード速度/圧縮率のトレードオフ）
+- `MAX_CONCURRENCY`: 1（同時実行上限。Whisper/ffmpeg の同時処理数）
 
 ## サーバ起動
 
@@ -56,6 +57,9 @@ FFMPEG_CRF=18 FFMPEG_PRESET=slow ./scripts/run_dev.sh
 
 # ポートを変更
 HOST=127.0.0.1 PORT=8080 ./scripts/run_dev.sh
+
+# 同時実行数を 2 に設定
+MAX_CONCURRENCY=2 ./scripts/run_dev.sh
 ```
 
 ## サンプル動画の用意

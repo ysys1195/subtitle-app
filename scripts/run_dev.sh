@@ -10,11 +10,12 @@ set -euo pipefail
 # 既定値（環境変数で上書き可）
 export FFMPEG_CRF="${FFMPEG_CRF:-23}"
 export FFMPEG_PRESET="${FFMPEG_PRESET:-medium}"
+export MAX_CONCURRENCY="${MAX_CONCURRENCY:-1}"
 
 HOST="${HOST:-0.0.0.0}"
 PORT="${PORT:-8000}"
 
-echo "[run_dev] FFMPEG_CRF=${FFMPEG_CRF} FFMPEG_PRESET=${FFMPEG_PRESET} HOST=${HOST} PORT=${PORT}"
+echo "[run_dev] FFMPEG_CRF=${FFMPEG_CRF} FFMPEG_PRESET=${FFMPEG_PRESET} MAX_CONCURRENCY=${MAX_CONCURRENCY} HOST=${HOST} PORT=${PORT}"
 
 exec uvicorn api.app.main:app \
   --host "${HOST}" \

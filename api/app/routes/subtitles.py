@@ -9,6 +9,8 @@ import tempfile
 import logging
 import time
 import shutil
+import asyncio
+import os
 
 from ..services.en_subs import generate_en_subtitled_video
 # 日本語版を実装したら次を有効化
@@ -16,6 +18,20 @@ from ..services.en_subs import generate_en_subtitled_video
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+# 同時実行制御（Whisper/ffmpeg は重いので制限）
+def _get_max_concurrency() -> int:
+    val = os.getenv("MAX_CONCURRENCY", "1").strip()
+    try:
+        n = int(val)
+        if n < 1:
+            raise ValueError
+        return n
+    except Exception:
+        logger.warning("MAX_CONCURRENCY is invalid: %r -> fallback to 1", val)
+        return 1
+
+_SEM = asyncio.Semaphore(_get_max_concurrency())
 
 def _save_upload_to_temp(upload_file: UploadFile) -> tuple[Path, tempfile.TemporaryDirectory]:
     """
@@ -43,8 +59,13 @@ async def subtitles_en(file: UploadFile = File(...)):
         in_path, td = _save_upload_to_temp(file)
         out_name = f"{Path(filename).stem}_subs.mp4"
         out_path = in_path.parent / out_name
-        # Whisper 推論 + ffmpeg 実行はスレッドプールへ委譲
-        await run_in_threadpool(generate_en_subtitled_video, in_path, out_path)
+        # Whisper 推論 + ffmpeg 実行はスレッドプールへ委譲（同時実行をセマフォで制御）
+        acquire_start = time.perf_counter()
+        async with _SEM:
+            queued_ms = (time.perf_counter() - acquire_start) * 1000
+            if queued_ms > 1:
+                logger.info("/subtitles/en queued_ms=%.1f (concurrency limit)", queued_ms)
+            await run_in_threadpool(generate_en_subtitled_video, in_path, out_path)
 
         size_bytes = out_path.stat().st_size
         elapsed = (time.perf_counter() - start) * 1000
