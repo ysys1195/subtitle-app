@@ -90,6 +90,34 @@ def _escape_for_subtitles_filter(p: Path) -> str:
     escaped = pp.replace("'", "\\'")
     return "filename='{}'".format(escaped)
 
+# ===== ffmpeg エンコードパラメータ（環境変数） =====
+def _get_ffmpeg_encode_params() -> List[str]:
+    """
+    環境変数から ffmpeg の画質/速度パラメータを取得する。
+      - FFMPEG_CRF   : 0-51（低いほど高画質。デフォルト 23）
+      - FFMPEG_PRESET: ultrafast~placebo（デフォルト medium）
+    いずれも未設定/不正値の場合はデフォルトを使用する。
+    """
+    crf_env = os.getenv("FFMPEG_CRF", "23").strip()
+    preset_env = os.getenv("FFMPEG_PRESET", "medium").strip()
+
+    # CRF の簡易バリデーション（整数でない/範囲外は既定値にフォールバック）
+    crf_value = "23"
+    try:
+        crf_int = int(crf_env)
+        if 0 <= crf_int <= 51:
+            crf_value = str(crf_int)
+        else:
+            logger.warning("FFMPEG_CRF out of range (0-51): %r -> fallback to 23", crf_env)
+    except Exception:
+        if crf_env:
+            logger.warning("FFMPEG_CRF is not integer: %r -> fallback to 23", crf_env)
+
+    preset_value = preset_env or "medium"
+
+    logger.info("ffmpeg encode params: crf=%s preset=%s", crf_value, preset_value)
+    return ["-crf", crf_value, "-preset", preset_value]
+
 # ===== 字幕焼き込み（SRT + ffmpeg） =====
 def _burn_srt_with_ffmpeg(video_path: Path, srt_path: Path, out_path: Path) -> None:
     """
@@ -98,6 +126,7 @@ def _burn_srt_with_ffmpeg(video_path: Path, srt_path: Path, out_path: Path) -> N
     - 音声が無い入力でも壊れないように -map 0:a? を使用
     """
     vf = f"subtitles={_escape_for_subtitles_filter(srt_path)}"
+    encode_params = _get_ffmpeg_encode_params()
     cmd = [
         "ffmpeg", "-y",
         "-i", str(video_path),
@@ -105,6 +134,7 @@ def _burn_srt_with_ffmpeg(video_path: Path, srt_path: Path, out_path: Path) -> N
         "-map", "0:v:0",
         "-map", "0:a?",
         "-c:v", "libx264",
+        *encode_params,
         "-pix_fmt", "yuv420p",
         "-profile:v", "high",
         "-level", "4.0",

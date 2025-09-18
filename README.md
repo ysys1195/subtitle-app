@@ -33,6 +33,8 @@ pip freeze --exclude-editable > requirements-lock.txt
 - `WHISPER_MODEL`: small
 - `DEVICE`: auto
 - `COMPUTE_TYPE`: 自動判定（未指定のため）
+- `FFMPEG_CRF`: 23（H.264 の画質指標。0-51、低いほど高画質/大きい）
+- `FFMPEG_PRESET`: medium（エンコード速度/圧縮率のトレードオフ）
 
 ## サーバ起動
 
@@ -42,6 +44,19 @@ uvicorn api.app.main:app --host 0.0.0.0 --port 8000 --log-level info
 
 - 動作確認用 UI: `http://localhost:8000/docs`
 - ヘルスチェック: `http://localhost:8000/healthz`
+
+### 開発用起動スクリプト（推奨）
+
+```bash
+chmod +x scripts/run_dev.sh
+./scripts/run_dev.sh
+
+# 画質/速度を上書きして起動
+FFMPEG_CRF=18 FFMPEG_PRESET=slow ./scripts/run_dev.sh
+
+# ポートを変更
+HOST=127.0.0.1 PORT=8080 ./scripts/run_dev.sh
+```
 
 ## サンプル動画の用意
 
@@ -93,11 +108,26 @@ uvicorn api.app.main:app --host 0.0.0.0 --port 8000 --log-level info
   pip install -r requirements-lock.txt
   ```
 
+## スコープ外（別Issueで追跡）
+
+- 日本語翻訳/字幕機能（`/translate`, `jp_subs.py`, `translate_to_jp.py` など）は本PRのスコープ外として一旦除外しました。別Issueで設計・実装を進めます。
+
 ## トラブルシュート
 
 - ffmpeg が見つからない/失敗する
   - `ffmpeg -version` で確認。失敗時はサーバログに stderr が出力されます。
 - 推論が遅い/失敗する
   - モデルを小さく（`WHISPER_MODEL=tiny` など）、Apple Silicon は`DEVICE=metal`, `COMPUTE_TYPE=float16` を推奨。
+- 画質/速度を調整したい
+  - 例: 高画質寄りにする（ファイルサイズは大きくなります）
+    ```bash
+    export FFMPEG_CRF=18
+    export FFMPEG_PRESET=slow
+    ```
+  - 例: 処理を速くする（圧縮効率は低下します）
+    ```bash
+    export FFMPEG_CRF=26
+    export FFMPEG_PRESET=fast
+    ```
 - CORS でブロックされる
   - 開発中は全許可設定。必要に応じて `main.py` の `allow_origins` を調整してください。
