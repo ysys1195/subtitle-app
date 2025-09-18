@@ -36,6 +36,7 @@ pip freeze --exclude-editable > requirements-lock.txt
 - `FFMPEG_CRF`: 23（H.264 の画質指標。0-51、低いほど高画質/大きい）
 - `FFMPEG_PRESET`: medium（エンコード速度/圧縮率のトレードオフ）
 - `MAX_CONCURRENCY`: 1（同時実行上限。Whisper/ffmpeg の同時処理数）
+- `MAX_UPLOAD_MB`: 200（アップロード許容サイズ上限。超過時は 413）
 
 ## サーバ起動
 
@@ -60,6 +61,9 @@ HOST=127.0.0.1 PORT=8080 ./scripts/run_dev.sh
 
 # 同時実行数を 2 に設定
 MAX_CONCURRENCY=2 ./scripts/run_dev.sh
+
+# アップロードサイズ上限を 100MB に設定
+MAX_UPLOAD_MB=100 ./scripts/run_dev.sh
 ```
 
 ## サンプル動画の用意
