@@ -6,7 +6,7 @@
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "next lint",
     "format": "prettier --write ."
   },
   "dependencies": {
@@ -28,5 +28,11 @@
     "prettier-plugin-tailwindcss": "^0.6.14",
     "tailwindcss": "^4.1.13",
     "typescript": "^5"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,css,md,mdx}": [
+      "prettier --write --ignore-unknown",
+      "eslint --cache --fix --max-warnings=0"
+    ]
   }
 }
