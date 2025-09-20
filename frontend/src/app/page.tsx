@@ -1,7 +1,7 @@
 export default function Page() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-white">
-      <div className="text-2xl font-semibold text-gray-700">Drop a video here</div>
+    <main className="bg-background flex min-h-screen items-center justify-center">
+      <div className="text-foreground text-2xl font-semibold">Drop a video here</div>
     </main>
   );
 }
