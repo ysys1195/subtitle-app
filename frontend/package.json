@@ -30,10 +30,15 @@
     "tailwindcss": "^4.1.13",
     "typescript": "^5"
   },
+  "engines": {
+    "node": ">=20 <21"
+  },
   "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --no-warn-ignored --cache --fix --max-warnings=0"
+    ],
     "*.{js,jsx,ts,tsx,css,md,mdx}": [
-      "prettier --write --ignore-unknown",
-      "eslint --cache --fix --max-warnings=0"
+      "prettier --write --ignore-unknown"
     ]
   }
 }
