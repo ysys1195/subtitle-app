@@ -1,16 +1,12 @@
 #!/usr/bin/env sh
-
 set -e
+# nodebrew がある環境だけ PATH を拡張
+if command -v nodebrew >/dev/null 2>&1; then
+  export PATH="$HOME/.nodebrew/current/bin:$PATH"
+fi
+# リポジトリルート基準で frontend に移動（CWDに依存しない）
+cd "$(git rev-parse --show-toplevel)/frontend"
 
-# Ensure modern Node from nodebrew is used even in GUI environments
-export PATH="$HOME/.nodebrew/current/bin:$PATH"
-echo "using node: $(node -v)"
-
-# リポジトリ直下から frontend に移動
-cd frontend
-
-# ステージ済みファイルのみ整形/修正
+# ローカルの lint-staged を優先実行（なければ npx が取得）
 npx lint-staged
-
-# プロジェクト全体の Lint（Next.js ルール）
 npm run lint
