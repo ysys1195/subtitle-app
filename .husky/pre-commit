@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+
+set -e
+
+# Ensure modern Node from nodebrew is used even in GUI environments
+export PATH="$HOME/.nodebrew/current/bin:$PATH"
+echo "using node: $(node -v)"
+
+# リポジトリ直下から frontend に移動
+cd frontend
+
+# ステージ済みファイルのみ整形/修正
+npx lint-staged
+
+# プロジェクト全体の Lint（Next.js ルール）
+npm run lint
