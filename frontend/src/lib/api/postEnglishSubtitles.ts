@@ -16,17 +16,17 @@ export type PostEnSubtitlesOptions = {
 };
 
 /**
- * 動画をmultipart/form-dataで POST {apiBase}/subtitles/enに送信し、MP4のBlobを受け取る
+ * 動画を multipart/form-data で {apiBase}/subtitles/en に POST する低レベル関数
+ * - レスポンスをそのまま返し、本文の解析やエラー整形は行わない
  * @param file - 送信する動画（File または Blob）
  * @param options - API ベース URL、ファイル名、キャンセルシグナル、タイムアウト等
- * @returns 成功時に `video/mp4` の Blob
- * @throws ApiError - HTTP エラー時にステータスと detail を保持して投げる
+ * @returns Response
  * @throws DOMException('AbortError') - 中断時
  */
-export async function postEnglishSubtitles(
+async function postEnglishSubtitlesRequest(
   file: File | Blob,
   options?: PostEnSubtitlesOptions,
-): Promise<Blob> {
+): Promise<Response> {
   const apiBase = options?.apiBase ?? process.env.NEXT_PUBLIC_API_BASE ?? '';
   // API ベース URL は必須
   if (!apiBase) throw new Error('API base URL is not configured');
@@ -51,8 +51,7 @@ export async function postEnglishSubtitles(
     const filename = file instanceof File ? file.name : (options?.filename ?? 'input.mp4');
     form.append('file', file, filename);
     const endpoint = new URL('/subtitles/en', apiBase).toString();
-    // 成功時はvideo/mp4、エラー時はapplication/jsonを優先
-    const res = await fetch(endpoint, {
+    return await fetch(endpoint, {
       method: 'POST',
       body: form,
       signal: abortController.signal,
@@ -60,6 +59,25 @@ export async function postEnglishSubtitles(
         Accept: 'video/mp4,application/json;q=0.9,*/*;q=0.8',
       },
     });
+  } finally {
+    timers.forEach(clearTimeout);
+  }
+}
+
+/**
+ * 英語字幕を焼き込んだMP4を生成するエンドポイントへ動画を送信するための薄いユーティリティ
+ * @param file - 送信する動画（File または Blob）
+ * @param options - API ベース URL、ファイル名、キャンセルシグナル、タイムアウト等
+ * @returns 成功時に `video/mp4` の Blob
+ * @throws ApiError - HTTP エラー時にステータスと detail を保持して投げる
+ * @throws DOMException('AbortError') - 中断時
+ */
+export async function postEnglishSubtitles(
+  file: File | Blob,
+  options?: PostEnSubtitlesOptions,
+): Promise<Blob> {
+  try {
+    const res = await postEnglishSubtitlesRequest(file, options);
 
     const contentType = (res.headers.get('Content-Type') || '').toLowerCase();
     // 成功かつvideo/mp4のときのみBlobを返す
@@ -82,11 +100,6 @@ export async function postEnglishSubtitles(
     }
     throw new ApiError(res.status, detail);
   } catch (err) {
-    // 中断はそのまま再送出し、呼び出し側で特別扱いさせる
-    if (err instanceof DOMException && err.name === 'AbortError') throw err;
     throw err;
-  } finally {
-    // タイマー後始末
-    timers.forEach(clearTimeout);
   }
 }
