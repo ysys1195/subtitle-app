@@ -1,15 +1,30 @@
 'use client';
 import { useState, useRef } from 'react';
 import { postEnglishSubtitles } from '../lib/api/postEnglishSubtitles';
+import { ApiError } from '../lib/errors/ApiError';
 
 export default function Page() {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const MAX_UPLOAD_BYTES = 200 * 1024 * 1024; // 200MB（バックエンド既定値と同じ）
+  const ALLOWED_EXTS = new Set(['mp4', 'mov', 'mkv', 'webm', 'm4v']);
 
   const onSubmit = async () => {
     if (!file) return;
+
+    // 事前バリデーション（拡張子 / サイズ）
+    const name = (file.name || '').toLowerCase();
+    const ext = name.includes('.') ? name.split('.').pop() || '' : '';
+    if (!ALLOWED_EXTS.has(ext)) {
+      alert('対応していない拡張子です。mp4/mov/mkv/webm/m4v を選択してください。');
+      return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      alert('ファイルが大きすぎます。200MB 以下の動画を選択してください。');
+      return;
+    }
     setLoading(true);
     try {
       const blob = await postEnglishSubtitles(file, {
@@ -25,7 +40,27 @@ export default function Page() {
         videoRef.current?.play().catch(() => {});
       });
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      if (e instanceof ApiError) {
+        if (e.status === 413) {
+          alert(
+            'アップロードが失敗しました（413: ファイルが大きすぎます）。200MB 以下の動画を選択してください。',
+          );
+        } else if (e.status === 422) {
+          alert(
+            'アップロードが失敗しました（422: 入力が不正です）。対応拡張子・動画ファイルかをご確認ください。',
+          );
+        } else if (e.status === 500) {
+          alert('サーバ内部エラー（500）が発生しました。時間を置いて再試行してください。');
+        } else {
+          alert(`エラーが発生しました（HTTP ${e.status}）: ${e.detail || e.message}`);
+        }
+      } else if (e instanceof DOMException && e.name === 'AbortError') {
+        alert('処理が中断されました。');
+      } else if (e instanceof Error) {
+        alert(e.message);
+      } else {
+        alert(String(e));
+      }
     } finally {
       setLoading(false);
     }
@@ -34,7 +69,11 @@ export default function Page() {
   return (
     <main style={{ padding: 24 }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
-        <input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+        <input
+          type="file"
+          accept="video/*"
+          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+        />
         <button onClick={onSubmit} disabled={!file || loading}>
           {loading ? '処理中...' : '字幕付き動画を生成'}
         </button>
