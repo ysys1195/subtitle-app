@@ -50,9 +50,9 @@ export async function postEnglishSubtitles(
     const form = new FormData();
     const filename = file instanceof File ? file.name : (options?.filename ?? 'input.mp4');
     form.append('file', file, filename);
-
+    const endpoint = new URL('/subtitles/en', apiBase).toString();
     // 成功時はvideo/mp4、エラー時はapplication/jsonを優先
-    const res = await fetch(`${apiBase}/subtitles/en`, {
+    const res = await fetch(endpoint, {
       method: 'POST',
       body: form,
       signal: abortController.signal,
